@@ -29,11 +29,30 @@ hermes chat -q "Reply with exactly: OK" --provider antigravity -m gemini-3.7-fla
 plugin/                    Hermes model-provider plugin (ProviderProfile)
 bridge/                    Local OAuth + Code Assist translation bridge
 tests/                     Unit + integration tests (unittest, no network)
-skills/antigravity-oauth-bridge/  Hermes Agent skill describing this plugin
+skills/                    16 Hermes Agent skills: OAuth bridge + engineering bundle
 install.py                 One-shot installer into $HERMES_HOME
 manage.py                  CLI: login / start / stop / status / install / setup
 .hermes/environment.json   `hermes verify` recipe for this repo
 ```
+
+## Bundled engineering skills
+
+`python install.py` syncs packaged skills into `$HERMES_HOME/skills/`. On upgrade,
+it replaces only bundled skills with matching names; unrelated user-created skills
+are preserved.
+
+- **Architecture and code organization:** `architecture-patterns`,
+  `api-and-interface-design`, `documentation-and-adrs`,
+  `python-project-structure`, `context-engineering`.
+- **Implementation, quality, and security:** `incremental-implementation`,
+  `source-driven-development`, `doubt-driven-development`,
+  `security-and-hardening`.
+- **Frontend:** `frontend-ui-engineering`.
+- **Data engineering:** `data-modelling`, `profile-data`, `pipeline-design`,
+  `test-data`, `data-security-classification`.
+
+Sources, MIT licensing, and the complete list are recorded in
+[`skills/VENDORED-SKILLS.md`](skills/VENDORED-SKILLS.md).
 
 ## Testing
 

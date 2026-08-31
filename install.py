@@ -17,11 +17,33 @@ from pathlib import Path
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 
+
 def get_hermes_home() -> Path:
     hermes_home = os.environ.get("HERMES_HOME")
     if hermes_home:
         return Path(hermes_home).expanduser().resolve()
     return Path.home() / ".hermes"
+
+
+def install_bundled_skills(hermes_dir: Path) -> list[str]:
+    """Sync packaged skills without modifying unrelated user-created skills."""
+    source_root = PACKAGE_DIR / "skills"
+    destination_root = hermes_dir / "skills"
+    if not source_root.is_dir():
+        return []
+
+    installed: list[str] = []
+    for source_skill in sorted(source_root.iterdir()):
+        if not source_skill.is_dir() or not (source_skill / "SKILL.md").is_file():
+            continue
+        destination_skill = destination_root / source_skill.name
+        if destination_skill.exists():
+            shutil.rmtree(destination_skill)
+        destination_root.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(source_skill, destination_skill)
+        installed.append(source_skill.name)
+    return installed
+
 
 def main():
     print("=" * 65)
@@ -34,7 +56,7 @@ def main():
     # 1. Install Plugin
     plugin_dest = hermes_dir / "plugins" / "model-providers" / "antigravity"
     plugin_src = PACKAGE_DIR / "plugin"
-    print(f"\n[1/4] Installing Provider Plugin to {plugin_dest}...")
+    print(f"\n[1/5] Installing Provider Plugin to {plugin_dest}...")
     plugin_dest.mkdir(parents=True, exist_ok=True)
     for f in plugin_src.glob("*"):
         if f.is_file():
@@ -44,21 +66,29 @@ def main():
     # 2. Install Bridge Engine
     bridge_dest = hermes_dir / "bridge" / "antigravity" / "tools" / "antigravity_bridge"
     bridge_src = PACKAGE_DIR / "bridge"
-    print(f"\n[2/4] Installing Bridge Runtime Engine to {bridge_dest}...")
+    print(f"\n[2/5] Installing Bridge Runtime Engine to {bridge_dest}...")
     bridge_dest.parent.mkdir(parents=True, exist_ok=True)
     if bridge_dest.exists():
         shutil.rmtree(bridge_dest, ignore_errors=True)
     shutil.copytree(bridge_src, bridge_dest)
-    print(f"      + Copied Bridge Engine files.")
+    print("      + Copied Bridge Engine files.")
 
     # 3. Copy Manager
     shutil.copy2(PACKAGE_DIR / "manage.py", hermes_dir / "bridge" / "antigravity" / "manage.py")
-    print(f"\n[3/4] Installed Management CLI at {hermes_dir / 'bridge' / 'antigravity' / 'manage.py'}")
+    print(f"\n[3/5] Installed Management CLI at {hermes_dir / 'bridge' / 'antigravity' / 'manage.py'}")
 
-    # 4. In-Repo synchronization (if executed from inside a hermes-agent git repo)
+    # 4. Sync packaged skill bundles. Existing skills with the same name are
+    # upgraded; unrelated user-created skills are left untouched.
+    bundled_skills = install_bundled_skills(hermes_dir)
+    if bundled_skills:
+        print(f"\n[4/5] Installed {len(bundled_skills)} bundled Hermes skills to {hermes_dir / 'skills'}")
+    else:
+        print("\n[4/5] No bundled skills found; skipped skill installation.")
+
+    # 5. In-Repo synchronization (if executed from inside a hermes-agent git repo)
     repo_candidate = PACKAGE_DIR.parent
     if (repo_candidate / "run_agent.py").is_file() and (repo_candidate / "hermes_cli").is_dir():
-        print(f"\n[4/4] Synchronizing with local workspace repository ({repo_candidate})...")
+        print(f"\n[5/5] Synchronizing with local workspace repository ({repo_candidate})...")
         repo_plugin = repo_candidate / "plugins" / "model-providers" / "antigravity"
         repo_tools = repo_candidate / "tools" / "antigravity_bridge"
         repo_plugin.mkdir(parents=True, exist_ok=True)
@@ -70,7 +100,7 @@ def main():
         shutil.copytree(bridge_src, repo_tools)
         print("      + Workspace repository fully synchronized.")
     else:
-        print(f"\n[4/4] Standalone environment installation complete.")
+        print("\n[5/5] Standalone environment installation complete.")
 
     print("\n" + "=" * 65)
     print(" INSTALLATION COMPLETED SUCCESSFULLY!")
@@ -84,6 +114,7 @@ def main():
     print("  3. Set as default model in Hermes:")
     print("     hermes model  (or choose 'Google Antigravity (OAuth)' on Dashboard)")
     print("=" * 65)
+
 
 if __name__ == "__main__":
     main()
